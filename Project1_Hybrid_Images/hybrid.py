@@ -1,6 +1,8 @@
 import sys
 import cv2
 import numpy as np
+import math
+
 
 def cross_correlation_2d(img, kernel):
     '''Given a kernel of arbitrary m x n dimensions, with both m and n being
@@ -20,9 +22,44 @@ def cross_correlation_2d(img, kernel):
         Return an image of the same dimensions as the input image (same width,
         height and the number of color channels)
     '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
+    # Initialize data
+    length, width = kernel.shape
+    k1, k2 = int((length - 1) / 2), int((width - 1) / 2)
+    kernel_matrix = np.asmatrix(kernel).reshape((length * width,1))
+    # For grey scale image
+    if len(img.shape) == 2:
+        L, W = img.shape
+        pixel_count = 0
+        pixel_matrix = np.zeros((L * W, length * width))
+        padding_img = np.zeros((L + k1 * 2, W + k2 * 2))
+        padding_img[k1:k1 + L, k2:k2 + W] = img
+        for i in range(L):
+            for j in range(W):
+                neighbor = padding_img[i:(length + i), j:(width + j)].reshape((length * width,))
+                pixel_matrix[pixel_count] = neighbor
+                pixel_count += 1
+        return np.dot(pixel_matrix, kernel_matrix).reshape((L, W))
+
+    # For RGB image
+    if len(img.shape) == 3:
+        L, W, C = img.shape
+        result_per_channel = np.zeros((L, W, C))
+        for k in range(C):
+            pixel_count = 0
+            pixel_matrix = np.zeros((L * W, length * width))
+            padding_img = np.zeros((L + k1 * 2, W + k2 * 2, C))
+            padding_img[k1:k1 + L, k2:k2 + W, k] = img[:, :, k]
+            for i in range(L):
+                for j in range(W):
+                    neighbor = padding_img[i:(length + i), j:(width + j),k].reshape((length * width,))
+                    pixel_matrix[pixel_count] = neighbor
+                    pixel_count += 1
+            result_per_channel[:, :, k] = np.dot(pixel_matrix, kernel_matrix).reshape((L, W, 1))
+        return result_per_channel
+
+    else:
+        print("Input image is not identifiable.")
+
 
 def convolve_2d(img, kernel):
     '''Use cross_correlation_2d() to carry out a 2D convolution.
@@ -37,9 +74,9 @@ def convolve_2d(img, kernel):
         Return an image of the same dimensions as the input image (same width,
         height and the number of color channels)
     '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
+    flipped_kernel = kernel[::-1, ::-1]
+    return cross_correlation_2d(img, flipped_kernel)
+
 
 def gaussian_blur_kernel_2d(sigma, height, width):
     '''Return a Gaussian blur kernel of the given dimensions and with the given
@@ -56,9 +93,16 @@ def gaussian_blur_kernel_2d(sigma, height, width):
         Return a kernel of dimensions height x width such that convolving it
         with an image results in a Gaussian-blurred image.
     '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
+    norm = np.zeros((height, width))
+
+    for i in range(height):
+        for j in range(width):
+            x = (i - (norm.shape[0] - 1) / 2)
+            y = (j - (norm.shape[1] - 1) / 2)
+            norm[i, j] = np.exp(-((x) ** 2 + (y) ** 2) / float(2 * sigma ** 2))
+    kernel_blur = norm / np.sum(norm)
+    return kernel_blur
+
 
 def low_pass(img, sigma, size):
     '''Filter the image as if its filtered with a low pass filter of the given
@@ -69,9 +113,8 @@ def low_pass(img, sigma, size):
         Return an image of the same dimensions as the input image (same width,
         height and the number of color channels)
     '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
+    return convolve_2d(img, gaussian_blur_kernel_2d(sigma, size, size))
+
 
 def high_pass(img, sigma, size):
     '''Filter the image as if its filtered with a high pass filter of the given
@@ -82,12 +125,11 @@ def high_pass(img, sigma, size):
         Return an image of the same dimensions as the input image (same width,
         height and the number of color channels)
     '''
-    # TODO-BLOCK-BEGIN
-    raise Exception("TODO in hybrid.py not implemented")
-    # TODO-BLOCK-END
+    return img - low_pass(img, sigma, size)
+
 
 def create_hybrid_image(img1, img2, sigma1, size1, high_low1, sigma2, size2,
-        high_low2, mixin_ratio, scale_factor):
+                        high_low2, mixin_ratio, scale_factor):
     '''This function adds two images to create a hybrid image, based on
     parameters specified by the user.'''
     high_low1 = high_low1.lower()
@@ -107,8 +149,7 @@ def create_hybrid_image(img1, img2, sigma1, size1, high_low1, sigma2, size2,
     else:
         img2 = high_pass(img2, sigma2, size2)
 
-    img1 *=  (1 - mixin_ratio)
+    img1 *= (1 - mixin_ratio)
     img2 *= mixin_ratio
     hybrid_img = (img1 + img2) * scale_factor
     return (hybrid_img * 255).clip(0, 255).astype(np.uint8)
-

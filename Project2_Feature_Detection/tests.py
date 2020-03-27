@@ -59,6 +59,7 @@ def try_this(todo, run, truth, compare, *args, **kargs):
         for i in range(len(output)):
             if not compare(output[i], truth[i], **kargs):
                 print("TODO {} doesn't pass test: {}".format(todo, i))
+                print(output[i], truth[i])
                 failed+=1
     else:
         if not compare(output, truth, **kargs):
@@ -102,10 +103,10 @@ tolerance range.
 
 This is not the script used by the autograder. 
 '''
-loaded = np.load('resources/arrays.npz')
+loaded = np.load('resources/arrays.npz',allow_pickle=True)
 d = unpickle_cv2(loaded['d_proc'])
 
-try_this(1, HKD.computeHarrisValues, [loaded['a'],loaded['b']], compare_array, grayImage)
+# try_this(1, HKD.computeHarrisValues, [loaded['a'],loaded['b']], compare_array, grayImage)
 
 # patch HKD so future tests won't fail because the last test failed
 class HKD2(features.HarrisKeypointDetector):
@@ -113,7 +114,7 @@ class HKD2(features.HarrisKeypointDetector):
     return loaded['a'],loaded['b']
 HKD=HKD2()
 
-try_this(2, HKD.computeLocalMaxima, loaded['c'], compare_array, loaded['a'])
+# try_this(2, HKD.computeLocalMaxima, loaded['c'], compare_array, loaded['a'])
 
 # patch HKD so future tests won't fail because the last test failed
 class HKD3(HKD2):
@@ -121,7 +122,8 @@ class HKD3(HKD2):
     return loaded['c']
 HKD=HKD3()
 
-try_this(3, HKD.detectKeypoints, d, compare_cv2_points, image)
+# try_this(3, HKD.detectKeypoints, d, compare_cv2_points, image)
+
 
 try_this(4, SFD.describeFeatures, loaded['e'], compare_array, image, d)
 
